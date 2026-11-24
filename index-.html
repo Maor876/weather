@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>מזג אוויר</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+/*
+VOICE: רגוע, ברור, מעשי — "צריך מטריה?"
+IDEA: לוח תחזית של תחנה מטאורולוגית
+PICTURE: תצוגה גדולה של הטמפרטורה ופס שעות שבו שעות הגשם צבועות כחול
+COLOUR and TYPE: שמיים כחולים עמוקים, לבן, צהוב שמש כמבטא; Heebo
+LAYOUT: חיפוש למעלה, כרטיס היום, פס שעות, טבלה, תחזית שבועית
+*/
+:root{color-scheme:light dark;--bg:light-dark(#eef4fb,#0e1a2b);--card:light-dark(#ffffff,#16263d);--ink:light-dark(#0f2238,#eaf2fc);--mute:light-dark(#5a6f87,#9fb3cb);--sky:#1f6fd1;--rain:#2f8cff;--sun:#ffc533;--line:light-dark(#dbe5f0,#25385230)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{transition:background .4s,color .4s;margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Heebo,-apple-system,"Segoe UI",Arial,sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:32px;line-height:1.05;margin:0 0 16px;font-weight:800}
+form{display:flex;gap:8px;flex-wrap:wrap}
+input{flex:1 1 220px;font:inherit;font-size:17px;padding:12px 16px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink);min-height:48px}
+input:focus{outline:none;border-color:var(--sky)}
+button{font:inherit;font-weight:700;min-height:48px;padding:0 22px;border-radius:12px;border:0;background:var(--sky);color:#fff;cursor:pointer}
+button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 24px}
+.chips button{background:var(--card);color:var(--ink);border:1px solid var(--line);font-weight:500;min-height:38px;padding:0 14px}
+.chips button.active{border-color:var(--sky);box-shadow:0 0 0 3px color-mix(in srgb,var(--sky) 45%,transparent)}
+/* כחול כהה בריחוף עכבר, וכהה עוד יותר ברגע הלחיצה */
+.chips button{transition:background .15s,color .15s,border-color .15s}
+@media (hover:hover){.chips button:not(.here):hover{background:var(--sky);color:#fff;border-color:var(--sky)}}
+.chips button:not(.here):active{background:#174f99;color:#fff;border-color:#174f99}
+@media (hover:hover){.chips button.here:hover{background:#178a49;border-color:#178a49}}
+.chips button.here:active{background:#14783f;border-color:#14783f}
+.chips button.here{background:#1f9d55;color:#fff;border-color:#1f9d55;font-weight:700}
+.chips button.here.active{box-shadow:0 0 0 3px light-dark(#bfe8cf,#1f5a38)}
+.card{background:var(--card);border-radius:20px;padding:24px;margin-bottom:16px;box-shadow:0 1px 3px #0001}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;background:linear-gradient(135deg,#1f6fd1,#174f99);color:#fff}
+.place{font-size:28px;font-weight:800;line-height:1.1}
+.sub{opacity:.85}
+.temp{font-size:clamp(56px,10vw,88px);font-weight:800;line-height:1}
+.facts{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:15px;opacity:.95}
+.verdict{font-size:22px;font-weight:700;display:flex;gap:12px;align-items:center}
+.verdict .ic{font-size:34px}
+.aqi{display:inline-block;padding:2px 12px;border-radius:99px;font-weight:700;color:#0f2238}
+h2{font-size:20px;margin:0 0 14px}
+.strip{display:flex;gap:4px;overflow-x:auto;padding-bottom:6px}
+.h{flex:0 0 48px;text-align:center;font-size:13px;color:var(--mute)}
+.h .bar{height:70px;display:flex;align-items:flex-end;justify-content:center;margin:4px 0}
+.h .bar i{display:block;width:22px;border-radius:6px 6px 2px 2px;background:var(--line)}
+.h.rain .bar i{background:var(--rain)}
+.h.now{color:var(--ink);font-weight:700}
+.h .t{color:var(--ink);font-weight:500}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:start;white-space:nowrap}
+th{color:var(--mute);font-weight:500}
+td.n{text-align:end;font-variant-numeric:tabular-nums}
+tr.rain td{background:light-dark(#e6f1ff,#1b3557)}
+tr.now td{font-weight:700}
+.scroll{overflow-x:auto}
+.week{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.day{border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center}
+.day b{display:block}
+.msg{padding:20px;text-align:center;color:var(--mute)}
+.err{color:#d33}
+.hidden{display:none}
+@media(max-width:600px){.hero{grid-template-columns:1fr}.place{font-size:24px}}
+@media(prefers-reduced-motion:no-preference){.card{animation:in .35s ease}@keyframes in{from{opacity:0;transform:translateY(6px)}}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🌤️ מזג אוויר</h1>
+  <form id="f">
+    <input id="city" placeholder="הקלידו עיר, למשל חיפה" autocomplete="off" aria-label="עיר">
+    <button type="submit">הצג</button>
+  </form>
+  <div class="chips" id="chips"></div>
+  <div id="out"><div class="msg">טוען…</div></div>
+</div>
+
+<script>
+{
+const WMO={0:["בהיר","☀️"],1:["בהיר ברובו","🌤️"],2:["מעונן חלקית","⛅"],3:["מעונן","☁️"],45:["ערפל","🌫️"],48:["ערפל קפוא","🌫️"],51:["טפטוף קל","🌦️"],53:["טפטוף","🌦️"],55:["טפטוף חזק","🌧️"],56:["טפטוף קפוא","🌧️"],57:["טפטוף קפוא","🌧️"],61:["גשם קל","🌦️"],63:["גשם","🌧️"],65:["גשם חזק","🌧️"],66:["גשם קפוא","🌧️"],67:["גשם קפוא","🌧️"],71:["שלג קל","🌨️"],73:["שלג","🌨️"],75:["שלג כבד","❄️"],77:["גרגרי שלג","🌨️"],80:["ממטרים קלים","🌦️"],81:["ממטרים","🌧️"],82:["ממטרים עזים","⛈️"],85:["ממטרי שלג","🌨️"],86:["ממטרי שלג","❄️"],95:["סופת רעמים","⛈️"],96:["סופת רעמים וברד","⛈️"],99:["סופת רעמים וברד","⛈️"]};
+const RAIN=new Set([51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99]);
+const DAYS=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+const CITIES=["חיפה","תל אביב","ירושלים","באר שבע","אילת","נתניה"];
+const w=c=>WMO[c]||["לא ידוע","❔"];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function aqiInfo(v){
+  if(v==null)return null;
+  const L=[[20,"טובה","#7ee08a"],[40,"סבירה","#c8e66b"],[60,"בינונית","#ffd25c"],[80,"ירודה","#ff9f5c"],[100,"ירודה מאוד","#ff6b6b"]];
+  for(const [m,t,c] of L) if(v<=m) return {t,c};
+  return {t:"מסוכנת",c:"#c77dff"};
+}
+function rainRanges(hours){
+  const out=[];let s=null,p=null;
+  for(const h of hours){ if(h.rain){ if(s===null)s=h.hr; p=h.hr; } else if(s!==null){ out.push([s,p]); s=null; } }
+  if(s!==null) out.push([s,p]);
+  return out.map(([a,b])=>`${String(a).padStart(2,"0")}:00–${String((b+1)%24).padStart(2,"0")}:00`);
+}
+async function getJSON(url){
+  const r=await fetch(url);
+  if(!r.ok) throw new Error("השירות החזיר שגיאה "+r.status);
+  return r.json();
+}
+
+let current=null; // "here" או שם עיר
+let hereLoc=null;
+try{hereLoc=JSON.parse(localStorage.getItem("hereLoc")||"null")}catch(e){}
+
+function markActive(){
+  document.querySelectorAll("#chips button").forEach(b=>b.classList.toggle("active",b.dataset.c===current));
+}
+function renderChips(){
+  const name=hereLoc?hereLoc.name:"המיקום שלי";
+  $("chips").innerHTML=CITIES.map(c=>`<button type="button" data-c="${c}">${c}</button>`).join("")+
+    `<button type="button" class="here" data-c="here" title="מזג האוויר במקום שבו אתם נמצאים">📍 ${esc(name)}</button>`;
+  markActive();
+}
+
+async function show(city){
+  city=city.trim(); if(!city) return;
+  $("city").value=city;
+  current=city; markActive();
+  try{localStorage.setItem("lastCity",city)}catch(e){}
+  $("out").innerHTML='<div class="msg">טוען…</div>';
+  try{
+    const g=await getJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=he&format=json`);
+    const loc=g.results&&g.results[0];
+    if(!loc){ $("out").innerHTML=`<div class="msg err">לא מצאתי עיר בשם "${esc(city)}". נסו לכתוב אחרת או באנגלית.</div>`; return; }
+    await load(loc);
+  }catch(e){ fail(e) }
+}
+
+// מיקום נוכחי: הדפדפן שואל פעם אחת אם מותר
+function showHere(){
+  current="here"; markActive(); $("city").value="";
+  if(!navigator.geolocation){ $("out").innerHTML='<div class="msg err">הדפדפן הזה לא תומך באיתור מיקום. כתבו עיר בשדה למעלה.</div>'; return; }
+  $("out").innerHTML='<div class="msg">מאתר את המיקום שלך…</div>';
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const lat=+pos.coords.latitude.toFixed(4), lon=+pos.coords.longitude.toFixed(4);
+    let loc={name:"המיקום שלי",country:"",admin1:"",latitude:lat,longitude:lon};
+    try{
+      const r=await getJSON(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=he`);
+      loc.name=r.city||r.locality||loc.name; loc.country=r.countryName||""; loc.admin1=r.principalSubdivision||"";
+    }catch(e){}
+    hereLoc=loc;
+    try{localStorage.setItem("hereLoc",JSON.stringify(loc))}catch(e){}
+    renderChips();
+    if(current==="here"){ try{ await load(loc) }catch(e){ fail(e) } }
+  },err=>{
+    const why=err.code===1
+      ?'לא ניתנה הרשאה למיקום. אפשר לאשר אותה בהגדרות הדפדפן, או פשוט לכתוב עיר בשדה למעלה.'
+      :'לא הצלחתי לאתר את המיקום. נסו שוב בעוד רגע, או כתבו עיר בשדה למעלה.';
+    if(current==="here") $("out").innerHTML=`<div class="msg err">${why}</div>`;
+  },{enableHighAccuracy:false,timeout:15000,maximumAge:10*60*1000});
+}
+
+function fail(e){
+  $("out").innerHTML=`<div class="msg err">לא הצלחתי להביא את הנתונים. בדקו שיש חיבור לאינטרנט ונסו שוב.<br><small>${esc(e.message)}</small></div>`;
+}
+
+async function load(loc){
+  {
+    const q=`latitude=${loc.latitude}&longitude=${loc.longitude}&timezone=auto`;
+    const [f,a]=await Promise.all([
+      getJSON(`https://api.open-meteo.com/v1/forecast?${q}&forecast_days=7`+
+        `&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code`+
+        `&hourly=temperature_2m,precipitation_probability,precipitation,weather_code`+
+        `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset`),
+      getJSON(`https://air-quality-api.open-meteo.com/v1/air-quality?${q}&forecast_days=1&current=european_aqi,pm2_5&hourly=european_aqi`).catch(()=>null)
+    ]);
+    render(loc,f,a);
+  }
+}
+
+// מצב לילה אוטומטי: לפי השקיעה והזריחה בעיר שמוצגת, אצל כולם
+function setDayNight(f){
+  const now=f.current.time, rise=f.daily.sunrise[0], set=f.daily.sunset[0];
+  const night=now<rise||now>=set;   // כל הזמנים בשעון המקומי של העיר
+  document.documentElement.dataset.theme=night?"dark":"light";
+  return night;
+}
+
+function render(loc,f,a){
+  const night=setDayNight(f);
+  const today=f.daily.time[0];
+  const nowHr=parseInt((f.current.time||"T00").split("T")[1],10);
+  const aqiBy={};
+  if(a&&a.hourly) a.hourly.time.forEach((t,i)=>aqiBy[t]=a.hourly.european_aqi[i]);
+  const hours=f.hourly.time.map((t,i)=>({t,hr:parseInt(t.slice(11,13),10),temp:f.hourly.temperature_2m[i],
+      prob:f.hourly.precipitation_probability[i]??0,mm:f.hourly.precipitation[i]??0,code:f.hourly.weather_code[i],aqi:aqiBy[t]}))
+    .filter(h=>h.t.startsWith(today))
+    .map(h=>({...h,rain:h.mm>0||h.prob>=50||RAIN.has(h.code)}));
+  const ranges=rainRanges(hours);
+  const total=hours.reduce((s,h)=>s+h.mm,0);
+  const c=f.current, [desc,icon]=w(c.weather_code);
+  const aq=a&&a.current?aqiInfo(a.current.european_aqi):null;
+  const d=new Date(today+"T12:00");
+  const maxT=Math.max(...hours.map(h=>h.temp)),minT=Math.min(...hours.map(h=>h.temp));
+
+  $("out").innerHTML=`
+  <div class="card hero">
+    <div>
+      <div class="place">📍 ${esc(loc.name)}</div>
+      <div class="sub">🌍 ${esc(loc.country||"")}${loc.admin1?" · "+esc(loc.admin1):""}</div>
+      <div class="sub">📅 יום ${DAYS[d.getDay()]}, ${d.toLocaleDateString("he-IL")}</div>
+      <div class="facts"><span>${icon} ${desc}</span><span>מרגיש כמו ${Math.round(c.apparent_temperature)}°</span><span>💧 לחות ${c.relative_humidity_2m}%</span><span>💨 ${Math.round(c.wind_speed_10m)} קמ"ש</span></div>
+    </div>
+    <div class="temp">${Math.round(c.temperature_2m)}°</div>
+  </div>
+
+  <div class="card">
+    <div class="verdict">${ranges.length
+      ?`<span class="ic">☔</span><span>גשם צפוי היום בשעות: ${ranges.join(", ")}<br><small style="font-weight:400;color:var(--mute)">סה"כ כ-${total.toFixed(1)} מ"מ. כדאי לקחת מטריה.</small></span>`
+      :`<span class="ic">☀️</span><span>לא צפוי גשם היום<br><small style="font-weight:400;color:var(--mute)">היום: ${Math.round(minT)}°–${Math.round(maxT)}°</small></span>`}</div>
+    ${aq?`<p style="margin:14px 0 0">🌫️ איכות אוויר: <span class="aqi" style="background:${aq.c}">${aq.t}</span> <small style="color:var(--mute)">(AQI ${Math.round(a.current.european_aqi)}, PM2.5 ${a.current.pm2_5} µg/m³)</small></p>`:""}
+  </div>
+
+  <div class="card">
+    <h2>סיכוי לגשם לפי שעות</h2>
+    <div class="strip">${hours.map(h=>`
+      <div class="h ${h.rain?"rain":""} ${h.hr===nowHr?"now":""}">
+        <div>${h.prob}%</div>
+        <div class="bar"><i style="height:${Math.max(4,h.prob*0.7)}px"></i></div>
+        <div class="t">${Math.round(h.temp)}°</div>
+        <div>${String(h.hr).padStart(2,"0")}</div>
+      </div>`).join("")}</div>
+  </div>
+
+  <div class="card">
+    <h2>טבלת שעות</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>שעה</th><th>מצב</th><th>טמפ'</th><th>סיכוי גשם</th><th>משקעים</th><th>איכות אוויר</th></tr></thead>
+      <tbody>${hours.map(h=>`<tr class="${h.rain?"rain":""} ${h.hr===nowHr?"now":""}">
+        <td>${String(h.hr).padStart(2,"0")}:00${h.hr===nowHr?" ◀ עכשיו":""}</td>
+        <td>${w(h.code)[1]} ${w(h.code)[0]}</td>
+        <td class="n">${h.temp.toFixed(1)}°</td>
+        <td class="n">${h.prob}%</td>
+        <td class="n">${h.mm.toFixed(1)} מ"מ</td>
+        <td class="n">${h.aqi!=null?Math.round(h.aqi)+" · "+aqiInfo(h.aqi).t:"–"}</td></tr>`).join("")}</tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <h2>השבוע הקרוב</h2>
+    <div class="week">${f.daily.time.map((t,i)=>{const dd=new Date(t+"T12:00");const[x,ic]=w(f.daily.weather_code[i]);return `
+      <div class="day"><b>${i===0?"היום":DAYS[dd.getDay()]}</b><div style="font-size:28px">${ic}</div>
+      <div>${Math.round(f.daily.temperature_2m_max[i])}° / ${Math.round(f.daily.temperature_2m_min[i])}°</div>
+      <small style="color:var(--mute)">☔ ${f.daily.precipitation_probability_max[i]??0}%</small></div>`}).join("")}</div>
+  </div>
+  <p style="text-align:center;color:var(--mute);font-size:13px">${night?"🌙 מצב לילה":"☀️ מצב יום"} · זריחה ${f.daily.sunrise[0].slice(11)} · שקיעה ${f.daily.sunset[0].slice(11)} · נתונים: Open-Meteo</p>`;
+}
+
+renderChips();
+$("chips").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;  b.dataset.c==="here"?showHere():show(b.dataset.c)});
+$("f").addEventListener("submit",e=>{e.preventDefault();show($("city").value)});
+// בפתיחה: מזג האוויר במקום שבו אתם נמצאים
+showHere();
+}
+</script>
+</body>
+</html>
