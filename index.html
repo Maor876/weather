@@ -28,6 +28,12 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 24px}
 .chips button{background:var(--card);color:var(--ink);border:1px solid var(--line);font-weight:500;min-height:38px;padding:0 14px}
 .chips button.active{border-color:var(--sky);box-shadow:inset 0 0 0 1px var(--sky)}
+/* ניסוי: כתום בריחוף עכבר וברגע הלחיצה בלבד */
+.chips button{transition:background .15s,color .15s,border-color .15s}
+@media (hover:hover){.chips button:not(.here):hover{background:#ea580c;color:#fff;border-color:#ea580c}}
+.chips button:not(.here):active{background:#ea580c;color:#fff;border-color:#ea580c}
+@media (hover:hover){.chips button.here:hover{background:#178a49;border-color:#178a49}}
+.chips button.here:active{background:#14783f;border-color:#14783f}
 .chips button.here{background:#1f9d55;color:#fff;border-color:#1f9d55;font-weight:700}
 .chips button.here.active{box-shadow:0 0 0 3px light-dark(#bfe8cf,#1f5a38)}
 .card{background:var(--card);border-radius:20px;padding:24px;margin-bottom:16px;box-shadow:0 1px 3px #0001}
@@ -252,7 +258,7 @@ function render(loc,f,a){
 }
 
 renderChips();
-$("chips").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return; b.dataset.c==="here"?showHere():show(b.dataset.c)});
+$("chips").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;  b.dataset.c==="here"?showHere():show(b.dataset.c)});
 $("f").addEventListener("submit",e=>{e.preventDefault();show($("city").value)});
 // בפתיחה: מזג האוויר במקום שבו אתם נמצאים
 showHere();
