@@ -28,10 +28,10 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 24px}
 .chips button{background:var(--card);color:var(--ink);border:1px solid var(--line);font-weight:500;min-height:38px;padding:0 14px}
 .chips button.active{border-color:var(--sky);box-shadow:inset 0 0 0 1px var(--sky)}
-/* ניסוי: כתום בריחוף עכבר וברגע הלחיצה בלבד */
+/* כחול כהה בריחוף עכבר, וכהה עוד יותר ברגע הלחיצה */
 .chips button{transition:background .15s,color .15s,border-color .15s}
-@media (hover:hover){.chips button:not(.here):hover{background:#ea580c;color:#fff;border-color:#ea580c}}
-.chips button:not(.here):active{background:#ea580c;color:#fff;border-color:#ea580c}
+@media (hover:hover){.chips button:not(.here):hover{background:var(--sky);color:#fff;border-color:var(--sky)}}
+.chips button:not(.here):active{background:#174f99;color:#fff;border-color:#174f99}
 @media (hover:hover){.chips button.here:hover{background:#178a49;border-color:#178a49}}
 .chips button.here:active{background:#14783f;border-color:#14783f}
 .chips button.here{background:#1f9d55;color:#fff;border-color:#1f9d55;font-weight:700}
