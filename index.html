@@ -30,7 +30,7 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .chips button.active{border-color:var(--sky);box-shadow:0 0 0 3px color-mix(in srgb,var(--sky) 45%,transparent)}
 /* כחול כהה בריחוף עכבר, וכהה עוד יותר ברגע הלחיצה */
 .chips button{transition:background .15s,color .15s,border-color .15s}
-@media (hover:hover){.chips button:not(.here):hover{background:var(--sky);color:#fff;border-color:var(--sky)}}
+@media (hover:hover){.chips button:not(.here):hover{background:var(--sky);color:#fff;border-color:var(--sky);box-shadow:0 0 0 3px color-mix(in srgb,var(--sky) 45%,transparent)}}
 .chips button:not(.here):active{background:#174f99;color:#fff;border-color:#174f99}
 @media (hover:hover){.chips button.here:hover{background:#178a49;border-color:#178a49}}
 .chips button.here:active{background:#14783f;border-color:#14783f}
