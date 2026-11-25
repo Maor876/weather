@@ -125,14 +125,20 @@ const DAYS=["ראשון","שני","שלישי","רביעי","חמישי","שיש
 const CITIES=["חיפה","תל אביב","ירושלים","באר שבע","אילת","נתניה"];
 const w=c=>WMO[c]||["לא ידוע","❔"];
 // אייקון לפי מזג האוויר ולפי יום/לילה: בלילה ירח במקום שמש
-const NIGHT={0:"🌙",1:"🌙",2:"☁️"};
-const ic=(code,isDay)=>(!isDay&&NIGHT[code])||w(code)[1];
-const bigIcon=(code,isDay)=>{
+// מופע הירח האמיתי לפי התאריך (מחזור של 29.53 ימים, מירח חדש ידוע ב-6.1.2000)
+const PHASES=["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"];
+const moon=t=>{const age=((new Date(t)-Date.UTC(2000,0,6,18,14))/864e5%29.530588853+29.530588853)%29.530588853;return PHASES[Math.round(age/29.530588853*8)%8];};
+// בלילה: ירח לפי המופע, ובטפטוף או גשם קל – גשם בלי שמש
+const NIGHT={2:"☁️",51:"🌧️",53:"🌧️",61:"🌧️",80:"🌧️"};
+const ic=(code,isDay,t)=>isDay?w(code)[1]:(code<=1?moon(t):NIGHT[code]||w(code)[1]);
+const NIGHT_TXT={0:"לילה בהיר",1:"לילה בהיר ברובו"};
+const txt=(code,isDay)=>(!isDay&&NIGHT_TXT[code])||w(code)[0];
+const bigIcon=(code,isDay,t)=>{
   const one=(cls,e)=>`<span class="ic ${cls}">${e}</span>`;
   if(code>=95) return one("a-storm",ic(code,isDay));
   if((code>=71&&code<=77)||code==85||code==86) return one("a-snow",ic(code,isDay));
   if(code>=51) return one("a-rain",ic(code,isDay));
-  const sky=isDay?'<span class="a-sun">☀️</span>':'<span class="a-moon">🌙</span>';
+  const sky=isDay?'<span class="a-sun">☀️</span>':`<span class="a-moon">${moon(t)}</span>`;
   if(code==0||code==1){
     const extra=isDay?(code==1?'<span class="cl a-cloud">☁️</span>':''):'<i class="star s1">✦</i><i class="star s2">✦</i>';
     return `<span class="ic">${sky}${extra}</span>`;
@@ -280,7 +286,7 @@ function render(loc,f,a){
   const total=hours.reduce((s,h)=>s+h.mm,0);
   const maxProb=Math.max(0,...hours.map(h=>h.prob));
   const c=f.current;
-  const desc=w(c.weather_code)[0], icon=ic(c.weather_code,c.is_day);
+  const desc=txt(c.weather_code,c.is_day), icon=ic(c.weather_code,c.is_day,c.time);
   const aq=a&&a.current?aqiInfo(a.current.european_aqi):null;
   const d=new Date(today+"T12:00");
   const firstWet=hours.find(h=>h.rain);
@@ -299,8 +305,8 @@ function render(loc,f,a){
 
   <div class="card">
     <div class="verdict">${ranges.length
-      ?`${bigIcon(firstWet.code,firstWet.day)}<span>גשם צפוי ב-24 השעות הקרובות: ${ranges.join(", ")}<br><small style="font-weight:400;color:var(--mute)">סה"כ כ-${total.toFixed(1)} מ"מ. כדאי לקחת מטריה.</small></span>`
-      :`${bigIcon(c.weather_code,c.is_day)}<span>לא צפוי גשם ב-24 השעות הקרובות<br><small style="font-weight:400;color:var(--mute)">${desc} עכשיו · היום: ${Math.round(f.daily.temperature_2m_min[0])}°–${Math.round(f.daily.temperature_2m_max[0])}°</small></span>`}</div>
+      ?`${bigIcon(firstWet.code,firstWet.day,firstWet.t)}<span>גשם צפוי ב-24 השעות הקרובות: ${ranges.join(", ")}<br><small style="font-weight:400;color:var(--mute)">סה"כ כ-${total.toFixed(1)} מ"מ. כדאי לקחת מטריה.</small></span>`
+      :`${bigIcon(c.weather_code,c.is_day,c.time)}<span>לא צפוי גשם ב-24 השעות הקרובות<br><small style="font-weight:400;color:var(--mute)">${desc} עכשיו · היום: ${Math.round(f.daily.temperature_2m_min[0])}°–${Math.round(f.daily.temperature_2m_max[0])}°</small></span>`}</div>
     ${aq?`<p style="margin:14px 0 0">🌫️ איכות אוויר: <span class="aqi" style="background:${aq.c}">${aq.t}</span> <small style="color:var(--mute)">(AQI ${Math.round(a.current.european_aqi)}, PM2.5 ${a.current.pm2_5} µg/m³)</small></p>`:""}
   </div>
 
@@ -310,7 +316,7 @@ function render(loc,f,a){
       <div class="h ${h.rain?"rain":""} ${j===0?"now":""}">
         <div>${h.prob}%</div>
         <div class="bar"><i style="height:${Math.max(4,Math.round(h.prob*0.7))}px"></i></div>
-        <div>${ic(h.code,h.day)}</div>
+        <div>${ic(h.code,h.day,h.t)}</div>
         <div class="t">${Math.round(h.temp)}°</div>
         <div>${j===0?"עכשיו":String(h.hr).padStart(2,"0")}</div>
       </div>`).join("")}</div>
@@ -324,7 +330,7 @@ function render(loc,f,a){
       <thead><tr><th>שעה</th><th>מצב</th><th>טמפ'</th><th>סיכוי גשם</th><th>משקעים</th><th>איכות אוויר</th></tr></thead>
       <tbody>${hours.map((h,j)=>`<tr class="hr-row ${h.rain?"rain":""} ${j===0?"now":""}" tabindex="0" role="button" aria-expanded="false">
         <td>${label(h,j)}${j===0?" ("+hh(h.hr)+")":""}<span class="chev">▾</span></td>
-        <td>${ic(h.code,h.day)} ${w(h.code)[0]}</td>
+        <td>${ic(h.code,h.day,h.t)} ${txt(h.code,h.day)}</td>
         <td class="n">${h.temp.toFixed(1)}°</td>
         <td class="n">${h.prob}%</td>
         <td class="n">${h.mm.toFixed(1)} מ"מ</td>
