@@ -78,6 +78,30 @@ tr.det td{background:light-dark(#f4f8fd,#122136);white-space:normal}
 .privacy a{color:inherit;text-decoration:underline}
 @media(max-width:600px){.hero{grid-template-columns:1fr}.place{font-size:24px}}
 @media(prefers-reduced-motion:no-preference){.card{animation:in .35s ease}@keyframes in{from{opacity:0;transform:translateY(6px)}}}
+.verdict .ic{display:inline-block;line-height:1;position:relative}
+.verdict .ic>span{display:inline-block}
+.verdict .ic .cl{position:absolute;font-size:.62em;bottom:-.08em;left:-.22em}
+.verdict .ic .cl.big{font-size:.78em;left:-.3em}
+.verdict .ic .star{position:absolute;font-style:normal;color:#ffe9a8;line-height:1;opacity:.55}
+.verdict .ic .s1{font-size:12px;top:-.2em;left:-.45em}
+.verdict .ic .s2{font-size:9px;top:.55em;left:-.7em}
+@media(prefers-reduced-motion:no-preference){
+.a-sun{animation:a-sun 20s linear infinite}
+@keyframes a-sun{to{transform:rotate(360deg)}}
+.a-moon{animation:a-moon 4s ease-in-out infinite}
+@keyframes a-moon{0%,100%{filter:drop-shadow(0 0 1px rgba(255,236,170,.25))}50%{filter:drop-shadow(0 0 12px rgba(255,236,170,.95))}}
+.verdict .ic .star{opacity:0;animation:a-star 4.5s ease-in-out infinite}
+.verdict .ic .s2{animation-delay:2.2s}
+@keyframes a-star{0%,55%,100%{opacity:0;transform:scale(.6)}70%{opacity:1;transform:scale(1.15)}85%{opacity:.35;transform:scale(.9)}}
+.a-cloud{animation:a-cloud 6s ease-in-out infinite}
+@keyframes a-cloud{50%{transform:translateX(6px)}}
+.a-rain{animation:a-rain 1.8s ease-in-out infinite}
+@keyframes a-rain{50%{transform:translateY(3px)}}
+.a-snow{animation:a-snow 4s ease-in-out infinite}
+@keyframes a-snow{25%{transform:rotate(5deg)}75%{transform:rotate(-5deg)}}
+.a-storm{animation:a-storm 5s linear infinite}
+@keyframes a-storm{0%,88%,94%,100%{filter:none}91%,97%{filter:brightness(1.6) drop-shadow(0 0 6px rgba(255,230,120,.7))}}
+}
 </style>
 </head>
 <body>
@@ -103,6 +127,19 @@ const w=c=>WMO[c]||["לא ידוע","❔"];
 // אייקון לפי מזג האוויר ולפי יום/לילה: בלילה ירח במקום שמש
 const NIGHT={0:"🌙",1:"🌙",2:"☁️"};
 const ic=(code,isDay)=>(!isDay&&NIGHT[code])||w(code)[1];
+const bigIcon=(code,isDay)=>{
+  const one=(cls,e)=>`<span class="ic ${cls}">${e}</span>`;
+  if(code>=95) return one("a-storm",ic(code,isDay));
+  if((code>=71&&code<=77)||code==85||code==86) return one("a-snow",ic(code,isDay));
+  if(code>=51) return one("a-rain",ic(code,isDay));
+  const sky=isDay?'<span class="a-sun">☀️</span>':'<span class="a-moon">🌙</span>';
+  if(code==0||code==1){
+    const extra=isDay?(code==1?'<span class="cl a-cloud">☁️</span>':''):'<i class="star s1">✦</i><i class="star s2">✦</i>';
+    return `<span class="ic">${sky}${extra}</span>`;
+  }
+  if(code==2) return `<span class="ic">${sky}<span class="cl big a-cloud">☁️</span></span>`;
+  return one("a-cloud",ic(code,isDay));
+};
 const WIND=["צפון","צפון-מזרח","מזרח","דרום-מזרח","דרום","דרום-מערב","מערב","צפון-מערב"];
 const windFrom=d=>d==null?"":"מ"+WIND[Math.round(d/45)%8];
 const hh=h=>String(h).padStart(2,"0")+":00";
@@ -262,8 +299,8 @@ function render(loc,f,a){
 
   <div class="card">
     <div class="verdict">${ranges.length
-      ?`<span class="ic">${ic(firstWet.code,firstWet.day)}</span><span>גשם צפוי ב-24 השעות הקרובות: ${ranges.join(", ")}<br><small style="font-weight:400;color:var(--mute)">סה"כ כ-${total.toFixed(1)} מ"מ. כדאי לקחת מטריה.</small></span>`
-      :`<span class="ic">${icon}</span><span>לא צפוי גשם ב-24 השעות הקרובות<br><small style="font-weight:400;color:var(--mute)">${desc} עכשיו · היום: ${Math.round(f.daily.temperature_2m_min[0])}°–${Math.round(f.daily.temperature_2m_max[0])}°</small></span>`}</div>
+      ?`${bigIcon(firstWet.code,firstWet.day)}<span>גשם צפוי ב-24 השעות הקרובות: ${ranges.join(", ")}<br><small style="font-weight:400;color:var(--mute)">סה"כ כ-${total.toFixed(1)} מ"מ. כדאי לקחת מטריה.</small></span>`
+      :`${bigIcon(c.weather_code,c.is_day)}<span>לא צפוי גשם ב-24 השעות הקרובות<br><small style="font-weight:400;color:var(--mute)">${desc} עכשיו · היום: ${Math.round(f.daily.temperature_2m_min[0])}°–${Math.round(f.daily.temperature_2m_max[0])}°</small></span>`}</div>
     ${aq?`<p style="margin:14px 0 0">🌫️ איכות אוויר: <span class="aqi" style="background:${aq.c}">${aq.t}</span> <small style="color:var(--mute)">(AQI ${Math.round(a.current.european_aqi)}, PM2.5 ${a.current.pm2_5} µg/m³)</small></p>`:""}
   </div>
 
@@ -334,7 +371,5 @@ $("f").addEventListener("submit",e=>{e.preventDefault();show($("city").value)});
 showHere();
 }
 </script>
-  </body>
-</html>
 </body>
 </html>
