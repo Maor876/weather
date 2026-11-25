@@ -26,11 +26,11 @@ input:focus{outline:none;border-color:var(--sky)}
 button{font:inherit;font-weight:700;min-height:48px;padding:0 22px;border-radius:12px;border:0;background:var(--sky);color:#fff;cursor:pointer}
 button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 24px}
-.chips button{background:var(--card);color:var(--ink);border:1px solid var(--line);font-weight:500;min-height:38px;padding:0 14px}
-.chips button.active{border-color:var(--sky);box-shadow:inset 0 0 0 1px var(--sky)}
+.chips button{background:var(--sky);color:#fff;border:1px solid var(--sky);font-weight:500;min-height:38px;padding:0 14px}
+.chips button.active{background:var(--sky);color:#fff;border-color:var(--sky);box-shadow:0 0 0 3px color-mix(in srgb,var(--sky) 45%,transparent)}
 /* כחול כהה בריחוף עכבר, וכהה עוד יותר ברגע הלחיצה */
 .chips button{transition:background .15s,color .15s,border-color .15s}
-@media (hover:hover){.chips button:not(.here):hover{background:var(--sky);color:#fff;border-color:var(--sky)}}
+@media (hover:hover){.chips button:not(.here):hover{background:#1a5fb4;border-color:#1a5fb4}}
 .chips button:not(.here):active{background:#174f99;color:#fff;border-color:#174f99}
 @media (hover:hover){.chips button.here:hover{background:#178a49;border-color:#178a49}}
 .chips button.here:active{background:#14783f;border-color:#14783f}
@@ -66,6 +66,7 @@ tr.now td{font-weight:700}
 .msg{padding:20px;text-align:center;color:var(--mute)}
 .err{color:#d33}
 .hidden{display:none}
+.privacy{max-width:640px;margin:8px auto 0;text-align:center;font-size:13px;line-height:1.6;color:var(--mute)}
 @media(max-width:600px){.hero{grid-template-columns:1fr}.place{font-size:24px}}
 @media(prefers-reduced-motion:no-preference){.card{animation:in .35s ease}@keyframes in{from{opacity:0;transform:translateY(6px)}}}
 </style>
@@ -79,6 +80,7 @@ tr.now td{font-weight:700}
   </form>
   <div class="chips" id="chips"></div>
   <div id="out"><div class="msg">טוען…</div></div>
+  <p class="privacy">🔒 פרטיות: המיקום משמש רק להצגת מזג האוויר, ורק אם אישרתם אותו. הוא לא נשמר אצלנו. מיקום מקורב (בדיוק של כקילומטר) נשלח לשירותי Open-Meteo ו-BigDataCloud רק כדי לקבל תחזית ושם עיר. שם העיר האחרונה נשמר רק במכשיר שלכם. אפשר להשתמש באפליקציה גם בלי לאשר מיקום.</p>
 </div>
 
 <script>
@@ -143,7 +145,8 @@ function showHere(){
   if(!navigator.geolocation){ $("out").innerHTML='<div class="msg err">הדפדפן הזה לא תומך באיתור מיקום. כתבו עיר בשדה למעלה.</div>'; return; }
   $("out").innerHTML='<div class="msg">מאתר את המיקום שלך…</div>';
   navigator.geolocation.getCurrentPosition(async pos=>{
-    const lat=+pos.coords.latitude.toFixed(4), lon=+pos.coords.longitude.toFixed(4);
+    // פרטיות: מעגלים לכ-1 ק"מ. מספיק לתחזית, ולא חושף כתובת מדויקת
+    const lat=+pos.coords.latitude.toFixed(2), lon=+pos.coords.longitude.toFixed(2);
     let loc={name:"המיקום שלי",country:"",admin1:"",latitude:lat,longitude:lon};
     try{
       const r=await getJSON(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=he`);
