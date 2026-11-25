@@ -80,6 +80,8 @@ tr.det td{background:light-dark(#f4f8fd,#122136);white-space:normal}
 @media(prefers-reduced-motion:no-preference){.card{animation:in .35s ease}@keyframes in{from{opacity:0;transform:translateY(6px)}}}
 .verdict .ic{display:inline-block;line-height:1;position:relative}
 .verdict .ic>span{display:inline-block}
+/* Safari חותך אימוג'י עם זוהר לגבולות התיבה: מוסיפים מרווח פנימי, ומקזזים אותו כדי שהמיקום לא יזוז */
+.verdict .a-moon,.verdict .a-sun,.verdict .ic.a-storm{padding:.18em;margin:-.18em;line-height:1.2}
 .verdict .ic .cl{position:absolute;font-size:.62em;bottom:-.08em;left:-.22em}
 .verdict .ic .cl.big{font-size:.78em;left:-.3em}
 .verdict .ic .star{position:absolute;font-style:normal;color:#ffe9a8;line-height:1;opacity:.55}
