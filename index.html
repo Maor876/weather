@@ -205,3 +205,136 @@ function setDayNight(f){
   document.documentElement.dataset.theme=night?"dark":"light";
   return night;
 }
+
+// אייקון ליום בתחזית השבועית: לפי השעות של היום (9:00–17:00), לא לפי "הגרוע ביותר ביום"
+function dayIcon(all,date){
+  const day=all.filter(h=>h.t.startsWith(date)&&h.hr>=9&&h.hr<=17);
+  if(!day.length) return null;
+  // אם צפוי גשם ממשי באותו יום (שעתיים ומעלה), גם בלילה, מציגים גשם
+  const wet=all.filter(h=>h.t.startsWith(date)&&(h.mm>=0.1||h.prob>=50));
+  if(wet.length>=2){
+    const codes=wet.map(h=>h.code).filter(c=>RAIN.has(c));
+    return codes.length?Math.max(...codes):61;
+  }
+  const cnt={};
+  for(const h of day){ const c=RAIN.has(h.code)?3:h.code; cnt[c]=(cnt[c]||0)+1; }
+  return +Object.entries(cnt).sort((x,y)=>y[1]-x[1])[0][0];
+}
+
+function render(loc,f,a){
+  const night=setDayNight(f);
+  const today=f.daily.time[0];
+  const H=f.hourly;
+  const aqiBy={};
+  if(a&&a.hourly) a.hourly.time.forEach((t,i)=>aqiBy[t]=a.hourly.european_aqi[i]);
+  const all=H.time.map((t,i)=>{
+    const h={t,i,hr:parseInt(t.slice(11,13),10),temp:H.temperature_2m[i],feel:H.apparent_temperature[i],
+      hum:H.relative_humidity_2m[i],prob:H.precipitation_probability[i]??0,mm:H.precipitation[i]??0,
+      code:H.weather_code[i],wind:H.wind_speed_10m[i],wdir:H.wind_direction_10m[i],cloud:H.cloud_cover[i],
+      uv:H.uv_index[i],day:H.is_day[i],aqi:aqiBy[t]};
+    h.rain=h.mm>0||h.prob>=50||RAIN.has(h.code);
+    return h;
+  });
+  // 24 השעות הקרובות, החל מהשעה הנוכחית (גם אם עוברות לחצות)
+  const nowKey=(f.current.time||"").slice(0,13);
+  let i0=all.findIndex(h=>h.t.slice(0,13)>=nowKey); if(i0<0) i0=0;
+  const hours=all.slice(i0,i0+24);
+  const ranges=rainRanges(hours,today);
+  const total=hours.reduce((s,h)=>s+h.mm,0);
+  const maxProb=Math.max(0,...hours.map(h=>h.prob));
+  const c=f.current;
+  const desc=w(c.weather_code)[0], icon=ic(c.weather_code,c.is_day);
+  const aq=a&&a.current?aqiInfo(a.current.european_aqi):null;
+  const d=new Date(today+"T12:00");
+  const firstWet=hours.find(h=>h.rain);
+  const label=(h,j)=>j===0?"עכשיו":(h.t.startsWith(today)?"":"מחר ")+hh(h.hr);
+
+  $("out").innerHTML=`
+  <div class="card hero">
+    <div>
+      <div class="place">📍 ${esc(loc.name)}</div>
+      <div class="sub">🌍 ${esc(loc.country||"")}${loc.admin1?" · "+esc(loc.admin1):""}</div>
+      <div class="sub">📅 יום ${DAYS[d.getDay()]}, ${d.toLocaleDateString("he-IL")}</div>
+      <div class="facts"><span>${icon} ${desc}</span><span>מרגיש כמו ${Math.round(c.apparent_temperature)}°</span><span>💧 לחות ${c.relative_humidity_2m}%</span><span>💨 ${Math.round(c.wind_speed_10m)} קמ"ש</span></div>
+    </div>
+    <div class="temp">${Math.round(c.temperature_2m)}°</div>
+  </div>
+
+  <div class="card">
+    <div class="verdict">${ranges.length
+      ?`<span class="ic">${ic(firstWet.code,firstWet.day)}</span><span>גשם צפוי ב-24 השעות הקרובות: ${ranges.join(", ")}<br><small style="font-weight:400;color:var(--mute)">סה"כ כ-${total.toFixed(1)} מ"מ. כדאי לקחת מטריה.</small></span>`
+      :`<span class="ic">${icon}</span><span>לא צפוי גשם ב-24 השעות הקרובות<br><small style="font-weight:400;color:var(--mute)">${desc} עכשיו · היום: ${Math.round(f.daily.temperature_2m_min[0])}°–${Math.round(f.daily.temperature_2m_max[0])}°</small></span>`}</div>
+    ${aq?`<p style="margin:14px 0 0">🌫️ איכות אוויר: <span class="aqi" style="background:${aq.c}">${aq.t}</span> <small style="color:var(--mute)">(AQI ${Math.round(a.current.european_aqi)}, PM2.5 ${a.current.pm2_5} µg/m³)</small></p>`:""}
+  </div>
+
+  <div class="card">
+    <h2>סיכוי לגשם ב-24 השעות הקרובות</h2>
+    <div class="strip">${hours.map((h,j)=>`
+      <div class="h ${h.rain?"rain":""} ${j===0?"now":""}">
+        <div>${h.prob}%</div>
+        <div class="bar"><i style="height:${Math.max(4,Math.round(h.prob*0.7))}px"></i></div>
+        <div>${ic(h.code,h.day)}</div>
+        <div class="t">${Math.round(h.temp)}°</div>
+        <div>${j===0?"עכשיו":String(h.hr).padStart(2,"0")}</div>
+      </div>`).join("")}</div>
+    ${maxProb<10?`<p class="note">הסיכוי לגשם נמוך מאוד בכל השעות הקרובות (עד ${maxProb}%), ולכן העמודות נמוכות.</p>`:""}
+  </div>
+
+  <div class="card">
+    <h2>טבלת שעות</h2>
+    <p class="note" style="margin:-6px 0 10px">לחצו על שעה כדי לראות את כל הפרטים שלה.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>שעה</th><th>מצב</th><th>טמפ'</th><th>סיכוי גשם</th><th>משקעים</th><th>איכות אוויר</th></tr></thead>
+      <tbody>${hours.map((h,j)=>`<tr class="hr-row ${h.rain?"rain":""} ${j===0?"now":""}" tabindex="0" role="button" aria-expanded="false">
+        <td>${label(h,j)}${j===0?" ("+hh(h.hr)+")":""}<span class="chev">▾</span></td>
+        <td>${ic(h.code,h.day)} ${w(h.code)[0]}</td>
+        <td class="n">${h.temp.toFixed(1)}°</td>
+        <td class="n">${h.prob}%</td>
+        <td class="n">${h.mm.toFixed(1)} מ"מ</td>
+        <td class="n">${h.aqi!=null?Math.round(h.aqi)+" · "+aqiInfo(h.aqi).t:"–"}</td></tr>
+      <tr class="det hidden"><td colspan="6"><div class="detgrid">
+        <div><b>מרגיש כמו</b>${Math.round(h.feel)}°</div>
+        <div><b>לחות</b>${h.hum}%</div>
+        <div><b>רוח</b>${Math.round(h.wind)} קמ"ש ${windFrom(h.wdir)}</div>
+        <div><b>עננות</b>${h.cloud}%</div>
+        <div><b>סיכוי לגשם</b>${h.prob}%</div>
+        <div><b>כמות משקעים</b>${h.mm.toFixed(1)} מ"מ</div>
+        <div><b>מדד UV</b>${h.uv!=null?(+h.uv).toFixed(1):"–"}</div>
+        <div><b>איכות אוויר</b>${h.aqi!=null?Math.round(h.aqi)+" · "+aqiInfo(h.aqi).t:"–"}</div>
+      </div></td></tr>`).join("")}</tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <h2>השבוע הקרוב</h2>
+    <div class="week">${f.daily.time.slice(0,7).map((t,i)=>{const dd=new Date(t+"T12:00");const code=dayIcon(all,t)??f.daily.weather_code[i];return `
+      <div class="day"><b>${i===0?"היום":DAYS[dd.getDay()]}</b><div style="font-size:28px" title="${w(code)[0]}">${w(code)[1]}</div>
+      <div>${Math.round(f.daily.temperature_2m_max[i])}° / ${Math.round(f.daily.temperature_2m_min[i])}°</div>
+      <small style="color:var(--mute)">☔ ${f.daily.precipitation_probability_max[i]??0}%</small></div>`}).join("")}</div>
+  </div>
+  <p style="text-align:center;color:var(--mute);font-size:13px">${night?"🌙 מצב לילה":"☀️ מצב יום"} · זריחה ${f.daily.sunrise[0].slice(11)} · שקיעה ${f.daily.sunset[0].slice(11)}</p>`;
+}
+
+// פתיחה וסגירה של פרטי שעה בטבלה
+function toggleRow(r){
+  const det=r.nextElementSibling; if(!det||!det.classList.contains("det")) return;
+  const open=det.classList.toggle("hidden")===false;
+  r.setAttribute("aria-expanded",open);
+}
+$("out").addEventListener("click",e=>{const r=e.target.closest("tr.hr-row"); if(r) toggleRow(r);});
+$("out").addEventListener("keydown",e=>{const r=e.target.closest("tr.hr-row"); if(r&&(e.key==="Enter"||e.key===" ")){e.preventDefault();toggleRow(r);}});
+
+// עדכון אוטומטי כל 10 דקות, כדי שהטבלה תתקדם לבד עם השעה
+setInterval(()=>{ if(lastLoc&&!document.hidden) load(lastLoc).catch(()=>{}); },10*60*1000);
+
+renderChips();
+$("chips").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;  b.dataset.c==="here"?showHere():show(b.dataset.c)});
+$("f").addEventListener("submit",e=>{e.preventDefault();show($("city").value)});
+// בפתיחה: מזג האוויר במקום שבו אתם נמצאים
+showHere();
+}
+</script>
+  </body>
+</html>
+</body>
+</html>
